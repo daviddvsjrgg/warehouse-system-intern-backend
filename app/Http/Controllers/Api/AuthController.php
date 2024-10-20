@@ -60,9 +60,18 @@ class AuthController extends Controller
         // Generate a new token for the user
         $token = $user->createToken('token_name')->plainTextToken;
 
-        // Return success response with token
-        return (new GeneralResource(true, 'Login successful.', ['token' => $token], 200))->response();
+        // Set token expiration time (e.g., 2 hours from now) in GMT+7
+        $expiresAt = now()->timezone('GMT+7')->addHours(2);
+
+        // Return success response with token and user ID
+        return (new GeneralResource(true, 'Login successful.', [
+            'token' => $token,
+            'user_id' => $user->id,  // Include user ID in response
+            'expires_at' => $expiresAt // Set token expiration time
+        ], 200))->response();
     }
+
+
 
     public function logout(Request $request)
     {

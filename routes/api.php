@@ -18,7 +18,10 @@ use App\Http\Controllers\Api\ScannedItemController;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+// -> 'php artisan route:list' to check all route
+
+// Get User by their Token
+Route::middleware(['auth:sanctum', 'check.token.expiration'])->get('/user', function (Request $request) {
     return $request->user();
 });
 
@@ -26,16 +29,13 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::apiResource('examples', ExampleController::class);
 
 // Public routes
-Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/login', [AuthController::class, 'login'])->name('login');
+Route::post('/register', [AuthController::class, 'register'])->name('register');
 
 
 // Protected routes
-Route::middleware('auth:sanctum')->group(function () {
-    //Master Item
-    Route::apiResource('master-item', MasterItemController::class);
-    //Scanned Item
-    Route::apiResource('scanned-item', ScannedItemController::class);
-    // Logout
-    Route::post('/logout', [AuthController::class, 'logout']);
+Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']); // Logout
+    Route::apiResource('master-item', MasterItemController::class); //Master Item Api Resource 
+    Route::apiResource('scanned-item', ScannedItemController::class); //Scanned Item Api Resource
 });
