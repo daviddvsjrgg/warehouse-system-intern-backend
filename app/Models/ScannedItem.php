@@ -8,12 +8,15 @@ use Illuminate\Database\Eloquent\Model;
 class ScannedItem extends Model
 {
     use HasFactory;
-    protected $fillable = ['sku', 'invoice_number', 'item_id', 'qty'];
-    protected $casts = [
-        'created_at' => 'datetime:Y-m-d H:i:s'
-    ];
+    protected $fillable = ['sku', 'invoice_number', 'item_id', 'qty', 'user_id'];
+    
     public function master_item()
     {
         return $this->belongsTo(MasterItem::class, 'item_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 }

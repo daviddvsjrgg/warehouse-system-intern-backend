@@ -38,10 +38,10 @@ class GeneralResource extends JsonResource
      public function toArray(Request $request): array
      {
          return [
+             'status_code'  => $this->statusCode,
              'success'      => $this->status,
              'message'      => $this->message,
              'data'         => $this->resource,
-             'status_code'  => $this->statusCode
          ];
      }
 }

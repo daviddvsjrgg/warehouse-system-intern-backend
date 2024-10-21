@@ -18,9 +18,11 @@ return new class extends Migration
             $table->string('sku');
             $table->string('invoice_number');
             $table->bigInteger('item_id')->unsigned();
+            $table->bigInteger('user_id')->unsigned();
             $table->integer('qty');
             $table->timestamps();
             $table->foreign('item_id')->references('id')->on('master_items');
+            $table->foreign('user_id')->references('id')->on('users');
         });
     }
 

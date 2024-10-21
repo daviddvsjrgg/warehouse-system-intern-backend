@@ -7,6 +7,7 @@ use App\Http\Resources\GeneralResource;
 use App\Models\MasterItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon; // Import Carbon for date handling
 
 class MasterItemController extends Controller
 {
@@ -15,11 +16,25 @@ class MasterItemController extends Controller
      */
     public function index(Request $request)
     {
-        // Extract query and items per page (with a default value of 5)
+        // Extract query, exact flag, and items per page (with a default value of 5)
         $query = $request->input('query');
+        $exact = $request->input('exact', false); // Exact flag, defaults to false
         $perPage = $request->input('per_page', 5); // Defaults to 5 if not provided
 
-        // Retrieve items using search query if provided
+        // If 'exact' is true and a query is provided, find the exact match by SKU
+        if ($exact && $query) {
+            $items = MasterItem::where('sku', $query)->get();
+
+            // If no item is found, return a custom error response
+            if ($items->isEmpty()) {
+                return response()->json(new GeneralResource(false, 'Item not found', null, 404));
+            }
+
+            // Return the exact match without pagination
+            return new GeneralResource(true, 'Exact SKU match found!', $items, 200);
+        }
+
+        // If 'exact' is false or no query, search with pagination and partial matching
         $items = MasterItem::when($query, function ($queryBuilder) use ($query) {
             return $queryBuilder->where('nama_barang', 'like', "%{$query}%")
                 ->orWhere('barcode_sn', 'like', "%{$query}%")
@@ -35,6 +50,7 @@ class MasterItemController extends Controller
     /**
      * Store a newly created resource in storage.
      */
+
     public function store(Request $request)
     {
         // Inline validation for batch data
@@ -51,9 +67,18 @@ class MasterItemController extends Controller
 
         // Create items in batch
         $itemsData = $validator->validated()['items']; // Get validated items
-        $items = MasterItem::insert($itemsData); // Use insert for batch creation
 
-        return new GeneralResource(true, 'Data added successfully!', $items, 201);
+        // Append created_at and updated_at timestamps
+        $currentTimestamp = Carbon::now(); // Get the current timestamp
+        foreach ($itemsData as &$item) {
+            $item['created_at'] = $currentTimestamp;
+            $item['updated_at'] = $currentTimestamp;
+        }
+
+        // Use insert for batch creation
+        MasterItem::insert($itemsData);
+
+        return new GeneralResource(true, 'Data added successfully!', null, 201);
     }
 
     /**
