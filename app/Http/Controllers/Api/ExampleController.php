@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+// Log Info error
+use Illuminate\Support\Facades\Log; 
+
 // Import model Example
 use App\Models\Example;
 
@@ -25,10 +28,11 @@ class ExampleController extends Controller
     {
         // Get all examples
         $examples = Example::latest()->paginate(5);
-
+        
         // Return collection of examples as a resource
         return new GeneralResource(true, 'List Data Examples', $examples, 200);
     }
+    
 
     public function store(Request $request)
     {

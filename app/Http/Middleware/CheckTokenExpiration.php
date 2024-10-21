@@ -24,7 +24,10 @@ class CheckTokenExpiration
                 
                 // Check if the token is expired
                 if ($expiresAt->isPast()) {
-                    // Token is expired
+                    // Token is expired - delete it
+                    $token->delete();
+                    
+                    // Return response indicating the token is expired
                     return response()->json(['message' => 'Token expired. Please log in again.'], 401);
                 }
             }

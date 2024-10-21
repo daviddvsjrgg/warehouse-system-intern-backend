@@ -13,30 +13,47 @@ class MasterItemController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $items = MasterItem::paginate(10);
+        // Extract query and items per page (with a default value of 5)
+        $query = $request->input('query');
+        $perPage = $request->input('per_page', 5); // Defaults to 5 if not provided
+
+        // Retrieve items using search query if provided
+        $items = MasterItem::when($query, function ($queryBuilder) use ($query) {
+            return $queryBuilder->where('nama_barang', 'like', "%{$query}%")
+                ->orWhere('barcode_sn', 'like', "%{$query}%")
+                ->orWhere('sku', 'like', "%{$query}%");
+        })
+        ->paginate($perPage); // Paginate with dynamic per-page value
+
+        // Return paginated results wrapped in a resource
         return new GeneralResource(true, 'Data retrieved successfully!', $items, 200);
     }
+
 
     /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
     {
-        // Inline validation
+        // Inline validation for batch data
         $validator = Validator::make($request->all(), [
-            'nama_barang' => 'required|string|max:255',
-            'barcode_sn' => 'required|string|max:255|unique:master_items',
-            'sku' => 'required|string|max:255|unique:master_items',
+            'items' => 'required|array', // Ensure 'items' is an array
+            'items.*.nama_barang' => 'required|string|max:255',
+            'items.*.barcode_sn' => 'required|string|max:255|unique:master_items,barcode_sn',
+            'items.*.sku' => 'required|string|max:255|unique:master_items,sku',
         ]);
 
         if ($validator->fails()) {
             return response()->json(new GeneralResource(false, 'Validation Error', $validator->errors(), 422));
         }
 
-        $item = MasterItem::create($validator->validated());
-        return new GeneralResource(true, 'Data added successfully!', $item, 201);
+        // Create items in batch
+        $itemsData = $validator->validated()['items']; // Get validated items
+        $items = MasterItem::insert($itemsData); // Use insert for batch creation
+
+        return new GeneralResource(true, 'Data added successfully!', $items, 201);
     }
 
     /**
