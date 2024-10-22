@@ -25,7 +25,7 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->get('/user', func
     return $request->user();
 });
 
-// Examples
+// Examples -> Just for example for API crud & response
 Route::apiResource('examples', ExampleController::class);
 
 // Public routes
