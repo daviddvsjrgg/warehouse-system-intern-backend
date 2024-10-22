@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'paths' => ['api/api/*', 'sanctum/csrf-cookie'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'https://warehouse-system-intern-frontend.vercel.app'],
 
     'allowed_methods' => ['*'],
 
