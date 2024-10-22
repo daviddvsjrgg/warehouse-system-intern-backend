@@ -7,7 +7,8 @@ use App\Http\Resources\GeneralResource;
 use App\Models\MasterItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Carbon\Carbon; // Import Carbon for date handling
+use Carbon\Carbon;
+use DB;
 
 class MasterItemController extends Controller
 {
@@ -51,35 +52,37 @@ class MasterItemController extends Controller
      * Store a newly created resource in storage.
      */
 
-    public function store(Request $request)
-    {
-        // Inline validation for batch data
-        $validator = Validator::make($request->all(), [
-            'items' => 'required|array', // Ensure 'items' is an array
-            'items.*.nama_barang' => 'required|string|max:255',
-            'items.*.barcode_sn' => 'required|string|max:255|unique:master_items,barcode_sn',
-            'items.*.sku' => 'required|string|max:255|unique:master_items,sku',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(new GeneralResource(false, 'Validation Error', $validator->errors(), 422));
-        }
-
-        // Create items in batch
-        $itemsData = $validator->validated()['items']; // Get validated items
-
-        // Append created_at and updated_at timestamps
-        $currentTimestamp = Carbon::now(); // Get the current timestamp
-        foreach ($itemsData as &$item) {
-            $item['created_at'] = $currentTimestamp;
-            $item['updated_at'] = $currentTimestamp;
-        }
-
-        // Use insert for batch creation
-        MasterItem::insert($itemsData);
-
-        return new GeneralResource(true, 'Data added successfully!', null, 201);
-    }
+     public function store(Request $request)
+     {
+         $validator = Validator::make($request->all(), [
+             'items' => 'required|array',
+             'items.*.nama_barang' => 'required|string|max:255',
+             'items.*.barcode_sn' => 'required|string|max:255|unique:master_items,barcode_sn',
+             'items.*.sku' => 'required|string|max:255|unique:master_items,sku',
+         ]);
+     
+         if ($validator->fails()) {
+             return response()->json(new GeneralResource(false, 'Validation Error', $validator->errors(), 422));
+         }
+     
+         $itemsData = $validator->validated()['items'];
+         $currentTimestamp = Carbon::now();
+         foreach ($itemsData as &$item) {
+             $item['created_at'] = $currentTimestamp;
+             $item['updated_at'] = $currentTimestamp;
+         }
+     
+         DB::beginTransaction(); // Start a transaction
+     
+         try {
+             MasterItem::insert($itemsData); // Perform batch insert
+             DB::commit(); // Commit transaction
+             return new GeneralResource(true, 'Data added successfully!', null, 201);
+         } catch (\Exception $e) {
+             DB::rollBack(); // Rollback transaction in case of error
+             return response()->json(new GeneralResource(false, 'Error adding data', $e->getMessage(), 500));
+         }
+     }
 
     /**
      * Display the specified resource.
