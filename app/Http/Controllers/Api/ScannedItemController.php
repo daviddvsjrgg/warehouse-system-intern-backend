@@ -18,9 +18,11 @@ class ScannedItemController extends Controller
     {
         // Fetch the 'per_page' parameter, or default to 5 if not provided
         $perPage = $request->input('per_page', 5);
-
+        
         // Fetch the 'exact' search term (if provided)
         $exactSearch = $request->input('exact');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
 
         // Build the query
         $query = ScannedItem::with(['master_item', 'user']);
@@ -33,12 +35,22 @@ class ScannedItemController extends Controller
             });
         }
 
+        // If start date and end date are provided, filter by created_at date range
+        if ($startDate) {
+            $query->where('created_at', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->where('created_at', '<=', $endDate);
+        }
+
         // Paginate the results with the requested 'per_page' value
-        $scannedItems = $query->paginate($perPage);
+        $scannedItems = $query->latest()->paginate($perPage);
 
         // Return the response using the GeneralResource format
         return new GeneralResource(true, 'Data retrieved successfully!', $scannedItems, 200);
     }
+
+    
 
 
     /**
