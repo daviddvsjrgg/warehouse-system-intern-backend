@@ -14,26 +14,27 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         // Validate the incoming request data
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-        ]);
+        // $validator = Validator::make($request->all(), [
+        //     'name' => 'required|string|max:255',
+        //     'email' => 'required|string|email|max:255|unique:users',
+        //     'password' => 'required|string|min:8',
+        // ]);
 
-        // Return validation errors if validation fails
-        if ($validator->fails()) {
-            return (new GeneralResource(false, 'Validation Error', $validator->errors(), 422))->response();
-        }
+        // // Return validation errors if validation fails
+        // if ($validator->fails()) {
+        //     return (new GeneralResource(false, 'Validation Error', $validator->errors(), 422))->response();
+        // }
 
-        // Create a new user
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+        // // Create a new user
+        // $user = User::create([
+        //     'name' => $request->name,
+        //     'email' => $request->email,
+        //     'password' => Hash::make($request->password),
+        // ]);
 
         // Return success response
-        return (new GeneralResource(true, 'User registered successfully.', $user, 201))->response();
+        return (new GeneralResource(true, 'Register Not Available Yet!', null, 404))->response();
+        // return (new GeneralResource(true, 'User registered successfully.', $user, 201))->response();
     }
 
     public function login(Request $request)

@@ -30,17 +30,23 @@ class ScannedItemController extends Controller
         // If the 'exact' search term is provided, filter by the exact match on 'sku' or 'invoice_number'
         if ($exactSearch) {
             $query->where(function ($q) use ($exactSearch) {
-                $q->where('sku', $exactSearch)
-                ->orWhere('invoice_number', $exactSearch);
+                $q->where('sku', $exactSearch);
             });
         }
 
-        // If start date and end date are provided, filter by created_at date range
-        if ($startDate) {
-            $query->where('created_at', '>=', $startDate);
-        }
-        if ($endDate) {
-            $query->where('created_at', '<=', $endDate);
+        // If both start date and end date are provided and are the same, filter by that exact date
+        if ($startDate && $endDate && $startDate === $endDate) {
+            // Filter for the entire day, from 00:00:00 to 23:59:59
+            $query->whereDate('created_at', $startDate);
+        } else {
+            // If start date is provided, filter by created_at greater than or equal to the start date
+            if ($startDate) {
+                $query->where('created_at', '>=', $startDate);
+            }
+            // If end date is provided, filter by created_at less than or equal to the end of the day (23:59:59)
+            if ($endDate) {
+                $query->where('created_at', '<=', Carbon::parse($endDate)->endOfDay());
+            }
         }
 
         // Paginate the results with the requested 'per_page' value
@@ -50,7 +56,6 @@ class ScannedItemController extends Controller
         return new GeneralResource(true, 'Data retrieved successfully!', $scannedItems, 200);
     }
 
-    
 
 
     /**
@@ -96,7 +101,7 @@ class ScannedItemController extends Controller
      */
     public function show($id)
     {
-        $scannedItem = ScannedItem::with('master_item')->findOrFail($id);
+        $scannedItem = ScannedItem::with(['master_item', 'user'])->findOrFail($id);
         return new GeneralResource(true, 'Data retrieved successfully!', $scannedItem, 200);
     }
 
