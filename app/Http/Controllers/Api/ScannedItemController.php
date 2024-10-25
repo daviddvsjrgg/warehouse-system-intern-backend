@@ -112,10 +112,6 @@ class ScannedItemController extends Controller
     {
         // Inline validation
         $validator = Validator::make($request->all(), [
-            'item_id' => 'required|exists:master_items,id',
-            'user_id' => 'required|exists:users,id',
-            'sku' => 'required|string|max:255',
-            'invoice_number' => 'required|string|max:255',
             'qty' => 'required|integer|min:1',
         ]);
 
