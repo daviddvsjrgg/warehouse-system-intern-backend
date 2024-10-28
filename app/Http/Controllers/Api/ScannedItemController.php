@@ -70,7 +70,8 @@ class ScannedItemController extends Controller
             'items.*.user_id' => 'required|exists:users,id', // Ensure each item has a valid user_id
             'items.*.sku' => 'required|string|max:255', // SKU should be a string with max length 255
             'items.*.invoice_number' => 'required|string|max:255', // Invoice number should be a string with max length 255
-            'items.*.qty' => 'required|integer|min:1', // Quantity must be an integer with a minimum value of 1
+            'items.*.qty' => 'required|integer|min:0', // Quantity must be an integer with a minimum value of 0
+            'items.*.barcode_sn' => 'required|string|max:255', // Barcode SN should be a string with max length 255
         ]);
 
         // Check if validation fails
@@ -112,7 +113,7 @@ class ScannedItemController extends Controller
     {
         // Inline validation
         $validator = Validator::make($request->all(), [
-            'qty' => 'required|integer|min:1',
+            'qty' => 'required|integer|min:0',
         ]);
 
         if ($validator->fails()) {

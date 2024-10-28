@@ -16,6 +16,7 @@ return new class extends Migration
         Schema::create('scanned_items', function (Blueprint $table) {
             $table->id();
             $table->string('sku');
+            $table->string('barcode_sn');
             $table->string('invoice_number');
             $table->bigInteger('item_id')->unsigned();
             $table->bigInteger('user_id')->unsigned();
