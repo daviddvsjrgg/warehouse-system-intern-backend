@@ -24,7 +24,9 @@ class MasterItemController extends Controller
 
         // If 'exact' is true and a query is provided, find the exact match by SKU
         if ($exact && $query) {
-            $items = MasterItem::where('sku', $query)->get();
+            $items = MasterItem::where('sku', $query)
+            ->orWhere('nama_barang', $query)
+            ->get();
 
             // If no item is found, return a custom error response
             if ($items->isEmpty()) {
