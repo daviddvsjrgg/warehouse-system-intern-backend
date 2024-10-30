@@ -30,7 +30,8 @@ class ScannedItemController extends Controller
         // If the 'exact' search term is provided, filter by the exact match on 'sku' or 'invoice_number'
         if ($exactSearch) {
             $query->where(function ($q) use ($exactSearch) {
-                $q->where('sku', $exactSearch);
+                $q->where('sku', $exactSearch)
+                ->orWhere('barcode_sn', $exactSearch);
             });
         }
 
