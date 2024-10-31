@@ -31,7 +31,8 @@ class ScannedItemController extends Controller
         if ($exactSearch) {
             $query->where(function ($q) use ($exactSearch) {
                 $q->where('sku', $exactSearch)
-                ->orWhere('barcode_sn', $exactSearch);
+                ->orWhere('barcode_sn', $exactSearch)
+                ->orWhere('invoice_number', $exactSearch);
             });
         }
 
