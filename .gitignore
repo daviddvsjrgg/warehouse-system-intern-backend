@@ -19,6 +19,3 @@ yarn-error.log
 /.vscode
 
 /database/seeders/MasterItemSeeder.php
-/database/seeders/ScannedItemsSeeder.php
-/database/seeders/UserSeeder.php
-/database/seeders/RolesTableSeeder.php
