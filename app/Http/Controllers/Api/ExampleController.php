@@ -30,7 +30,7 @@ class ExampleController extends Controller
         $examples = Example::latest()->paginate(5);
         
         // Return collection of examples as a resource
-        return new GeneralResource(true, 'List Data Examples', $examples, 200);
+        return new GeneralResource(true, 'TEST FTPPPPPPPPPPPPP', $examples, 200);
     }
     
 
