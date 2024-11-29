@@ -30,7 +30,7 @@ class ExampleController extends Controller
         $examples = Example::latest()->paginate(5);
         
         // Return collection of examples as a resource
-        return new GeneralResource(true, 'test git ftp push tanpa commit semua', $examples, 200);
+        return new GeneralResource(true, 'Berhasil Commit 1 Change Saja Masbro!', $examples, 200);
     }
     
 
