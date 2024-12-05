@@ -19,15 +19,29 @@ class UserSeeder extends Seeder
         // Create Sample Dummy Users Array
         $users = [
             [
-                'name'=>'User ini bisa Scan',
+                'name'=>'Office Scanner',
                 'email'=>'user@gmail.com',
                 'email_verified_at' => now(),
                 'password'=> Hash::make('password'),
                 'remember_token' => Str::random(10),
             ],
             [
-                'name'=>'User ini Report',
+                'name'=>'Office Report',
                 'email'=>'user2@gmail.com',
+                'email_verified_at' => now(),
+                'password'=> Hash::make('password'),
+                'remember_token' => Str::random(10),
+            ],
+            [
+                'name'=>'Admin',
+                'email'=>'admin@gmail.com',
+                'email_verified_at' => now(),
+                'password'=> Hash::make('password'),
+                'remember_token' => Str::random(10),
+            ],
+            [
+                'name'=>'Developer',
+                'email'=>'developer@gmail.com',
                 'email_verified_at' => now(),
                 'password'=> Hash::make('password'),
                 'remember_token' => Str::random(10),
@@ -46,6 +60,14 @@ class UserSeeder extends Seeder
                 ]);
             } elseif ($key === 1) { // Second user gets only the office role
                 $user->roles()->attach(Role::where('name', 'office')->first()->id);
+            } elseif ($key === 2) {
+                $user->roles()->attach(Role::where('name', 'user-management')->first()->id);
+            } elseif ($key === 3) {
+                $user->roles()->attach([
+                    Role::where('name', 'user-management')->first()->id,
+                    Role::where('name', 'master-item')->first()->id,
+                    Role::where('name', 'office')->first()->id,
+                ]);
             }
         }
     }

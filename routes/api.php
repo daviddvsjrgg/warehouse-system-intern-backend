@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\UserManagementController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ExampleController;
@@ -52,5 +53,12 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
         Route::post('/scanned-item', [ScannedItemController::class, 'store'])->name('scanned-item.store');
         Route::put('/scanned-item/{id}', [ScannedItemController::class, 'update'])->name('scanned-item.update');
         Route::delete('/scanned-item/{id}', [ScannedItemController::class, 'destroy'])->name('scanned-item.destroy');
+    });
+
+    // User Management routes (accessible only by 'user-management' role)
+    Route::middleware(['check.role:user-management'])->group(function () {
+        Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
+        Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
+        Route::put('/users/{user}', [UserManagementController::class, 'updateUser'])->name('users.update');
     });
 });
