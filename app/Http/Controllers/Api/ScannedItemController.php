@@ -113,22 +113,22 @@ class ScannedItemController extends Controller
      */
     public function update(Request $request, $id)
     {
-        // Inline validation
-        $validator = Validator::make($request->all(), [
-            'qty' => 'required|integer|min:0',
+        // Validate the request for barcode_sn and qty
+        $request->validate([
+            'barcode_sn' => 'required|string',
+            'qty' => 'required|integer',
         ]);
-
-        if ($validator->fails()) {
-            return response()->json(new GeneralResource(false, 'Validation Error', $validator->errors(), 422));
-        }
-
-        // Use the validated data
-        $validatedData = $validator->validated();
+    
+        // Find the scanned item by ID
         $scannedItem = ScannedItem::findOrFail($id);
-        $scannedItem->update($validatedData);
-
+    
+        // Update the barcode_sn and qty fields
+        $scannedItem->barcode_sn = $request->barcode_sn;
+        $scannedItem->qty = $request->qty;
+        $scannedItem->save();
+    
         return new GeneralResource(true, 'Scanned item updated successfully!', $scannedItem, 200);
-    }
+    }    
 
     /**
      * Remove the specified scanned item.
