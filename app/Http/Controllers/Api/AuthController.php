@@ -62,7 +62,7 @@ class AuthController extends Controller
         $token = $user->createToken('token_name')->plainTextToken;
 
         // Set token expiration time (e.g., 2 hours from now) in GMT+7
-        $expiresAt = now()->timezone('GMT+7')->addHours(2);
+        $expiresAt = now()->timezone('GMT+7')->addHours(24);
 
         // Return success response with token and user ID
         return (new GeneralResource(true, 'Login successful.', [

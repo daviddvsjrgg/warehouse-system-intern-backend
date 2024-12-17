@@ -20,7 +20,7 @@ class CheckTokenExpiration
             // Check if token exists and validate its expiration
             if ($token) {
                 // Calculate expiration time based on GMT+7
-                $expiresAt = $token->created_at->timezone('GMT+7')->addHours(2);
+                $expiresAt = $token->created_at->timezone('GMT+7')->addHours(24);
                 
                 // Check if the token is expired
                 if ($expiresAt->isPast()) {
