@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 use DB;
+use Log;
 
 class MasterItemController extends Controller
 {
@@ -56,32 +57,48 @@ class MasterItemController extends Controller
 
      public function store(Request $request)
      {
+         // Validate the request data
          $validator = Validator::make($request->all(), [
              'items' => 'required|array',
              'items.*.nama_barang' => 'required|string|max:255',
              'items.*.barcode_sn' => 'required|string|max:255',
-             'items.*.sku' => 'required|string|max:255',
+             'items.*.sku' => 'required|string|max:255|unique:master_items,sku',
          ]);
      
+         // If validation fails, return detailed error messages
          if ($validator->fails()) {
              return response()->json(new GeneralResource(false, 'Validation Error', $validator->errors(), 422));
          }
      
+         // Extract validated data
          $itemsData = $validator->validated()['items'];
          $currentTimestamp = Carbon::now();
+     
+         // Add timestamps to each item
          foreach ($itemsData as &$item) {
              $item['created_at'] = $currentTimestamp;
              $item['updated_at'] = $currentTimestamp;
          }
      
-         DB::beginTransaction(); // Start a transaction
+         // Start a database transaction
+         DB::beginTransaction();
      
          try {
-             MasterItem::insert($itemsData); // Perform batch insert
-             DB::commit(); // Commit transaction
+             // Use chunking for large datasets
+             foreach (array_chunk($itemsData, 1000) as $chunk) {
+                 MasterItem::insert($chunk); // Batch insert each chunk
+             }
+     
+             // Commit the transaction if everything is successful
+             DB::commit();
+     
+             // Return success response
              return new GeneralResource(true, 'Data added successfully!', null, 201);
          } catch (\Exception $e) {
-             DB::rollBack(); // Rollback transaction in case of error
+             // Rollback transaction if an error occurs
+             DB::rollBack();
+     
+             // Return error response
              return response()->json(new GeneralResource(false, 'Error adding data', $e->getMessage(), 500));
          }
      }
