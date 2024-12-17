@@ -43,7 +43,7 @@ class MasterItemController extends Controller
                     ->orWhere('barcode_sn', 'like', "%{$query}%")
                     ->orWhere('sku', 'like', "%{$query}%");
             })
-            ->distinct() // Ensure the query is distinct (no duplicates)
+            ->groupBy('sku')  // Group by SKU to avoid duplicate entries
             ->paginate($perPage); // Paginate with dynamic per-page value
     
         // Return paginated results wrapped in a resource
