@@ -9,7 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 use DB;
-use Log;
 
 class MasterItemController extends Controller
 {
@@ -22,33 +21,35 @@ class MasterItemController extends Controller
         $query = $request->input('query');
         $exact = $request->input('exact', false); // Exact flag, defaults to false
         $perPage = $request->input('per_page', 5); // Defaults to 5 if not provided
-
+    
         // If 'exact' is true and a query is provided, find the exact match by SKU
         if ($exact && $query) {
             $items = MasterItem::where('sku', $query)
-            ->orWhere('nama_barang', $query)
-            ->get();
-
+                ->orWhere('nama_barang', $query)
+                ->get();
+    
             // If no item is found, return a custom error response
             if ($items->isEmpty()) {
                 return response()->json(new GeneralResource(false, 'Item not found', null, 404));
             }
-
+    
             // Return the exact match without pagination
             return new GeneralResource(true, 'Exact SKU match found!', $items, 200);
         }
-
+    
         // If 'exact' is false or no query, search with pagination and partial matching
         $items = MasterItem::when($query, function ($queryBuilder) use ($query) {
-            return $queryBuilder->where('nama_barang', 'like', "%{$query}%")
-                ->orWhere('barcode_sn', 'like', "%{$query}%")
-                ->orWhere('sku', 'like', "%{$query}%");
-        })
-        ->paginate($perPage); // Paginate with dynamic per-page value
-
+                return $queryBuilder->where('nama_barang', 'like', "%{$query}%")
+                    ->orWhere('barcode_sn', 'like', "%{$query}%")
+                    ->orWhere('sku', 'like', "%{$query}%");
+            })
+            ->distinct() // Ensure the query is distinct (no duplicates)
+            ->paginate($perPage); // Paginate with dynamic per-page value
+    
         // Return paginated results wrapped in a resource
         return new GeneralResource(true, 'Data retrieved successfully!', $items, 200);
     }
+    
 
 
     /**
