@@ -59,8 +59,8 @@ class MasterItemController extends Controller
          $validator = Validator::make($request->all(), [
              'items' => 'required|array',
              'items.*.nama_barang' => 'required|string|max:255',
-             'items.*.barcode_sn' => 'required|string|max:255|unique:master_items,barcode_sn',
-             'items.*.sku' => 'required|string|max:255|unique:master_items,sku',
+             'items.*.barcode_sn' => 'required|string|max:255',
+             'items.*.sku' => 'required|string|max:255',
          ]);
      
          if ($validator->fails()) {
