@@ -16,47 +16,41 @@ class ScannedItemController extends Controller
      */
     public function index(Request $request)
     {
-        // Fetch the 'per_page' parameter, or default to 5 if not provided
         $perPage = $request->input('per_page', 5);
-        
-        // Fetch the 'exact' search term (if provided)
-        $exactSearch = $request->input('exact');
+        $invoiceNumbers = $request->input('invoice_numbers', []); // Array of invoice numbers
+        $barcodeSNs = $request->input('barcode_sns', []); // Array of barcode SNs
+    
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
-
-        // Build the query
+    
         $query = ScannedItem::with(['master_item', 'user']);
-
-        // If the 'exact' search term is provided, filter by the exact match on 'sku' or 'invoice_number'
-        if ($exactSearch) {
-            $query->where(function ($q) use ($exactSearch) {
-                $q->where('sku', $exactSearch)
-                ->orWhere('barcode_sn', $exactSearch)
-                ->orWhere('invoice_number', $exactSearch);
-            });
+    
+        // If invoice numbers are provided, filter by those numbers
+        if (!empty($invoiceNumbers)) {
+            $query->whereIn('invoice_number', $invoiceNumbers);
         }
-
-        // If both start date and end date are provided and are the same, filter by that exact date
+    
+        // If barcode SNs are provided, filter by those SNs
+        if (!empty($barcodeSNs)) {
+            $query->orWhereIn('barcode_sn', $barcodeSNs);
+        }
+    
         if ($startDate && $endDate && $startDate === $endDate) {
-            // Filter for the entire day, from 00:00:00 to 23:59:59
             $query->whereDate('created_at', $startDate);
         } else {
-            // If start date is provided, filter by created_at greater than or equal to the start date
             if ($startDate) {
                 $query->where('created_at', '>=', $startDate);
             }
-            // If end date is provided, filter by created_at less than or equal to the end of the day (23:59:59)
             if ($endDate) {
                 $query->where('created_at', '<=', Carbon::parse($endDate)->endOfDay());
             }
         }
-
-        // Paginate the results with the requested 'per_page' value
+    
         $scannedItems = $query->latest()->paginate($perPage);
-
-        // Return the response using the GeneralResource format
+    
         return new GeneralResource(true, 'Data retrieved successfully!', $scannedItems, 200);
     }
+    
 
 
 
