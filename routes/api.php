@@ -26,7 +26,7 @@ use App\Http\Controllers\Api\RoleController;
 // Get User by their Token
 Route::middleware(['auth:sanctum', 'check.token.expiration'])->get('/user', function (Request $request) {
     // Eager load roles and permissions for the authenticated user
-    $user = $request->user()->load('roles.permissions');
+    $user = $request->user()->load('roles');
 
     return response()->json($user);
 });
