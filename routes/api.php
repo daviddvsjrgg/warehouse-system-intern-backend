@@ -3,10 +3,12 @@
 use App\Http\Controllers\Api\UserManagementController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\ExampleController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\MasterItemController;
 use App\Http\Controllers\Api\ScannedItemController;
+use App\Http\Controllers\Api\RoleController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,7 +25,10 @@ use App\Http\Controllers\Api\ScannedItemController;
 
 // Get User by their Token
 Route::middleware(['auth:sanctum', 'check.token.expiration'])->get('/user', function (Request $request) {
-    return response()->json($request->user()->load('roles'));
+    // Eager load roles and permissions for the authenticated user
+    $user = $request->user()->load('roles.permissions');
+
+    return response()->json($user);
 });
 
 // Examples -> Just for example for API crud & response
@@ -32,6 +37,19 @@ Route::apiResource('examples', ExampleController::class);
 // Public routes
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
+
+// -> Role
+Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
+Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
+Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
+
+// -> Permission
+Route::get('permissions', [PermissionController::class, 'index']);
+Route::post('permissions', [PermissionController::class, 'store']);
+Route::get('permissions/{id}', [PermissionController::class, 'show']);
+Route::put('permissions/{id}', [PermissionController::class, 'update']);
+Route::delete('permissions/{id}', [PermissionController::class, 'destroy']);
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function () {
@@ -60,5 +78,12 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
         Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
         Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
         Route::put('/users/{user}', [UserManagementController::class, 'updateUser'])->name('users.update');
+
+        // Assign permissions to a role
+        Route::post('roles/{roleId}/permissions', [PermissionController::class, 'assignPermissions']);
+        // Show permissions for a role
+        Route::get('roles/{roleId}/permissions', [PermissionController::class, 'showPermissions']);
+        // Remove permission from a role
+        Route::delete('roles/{roleId}/permissions', [PermissionController::class, 'removePermission']);
     });
 });

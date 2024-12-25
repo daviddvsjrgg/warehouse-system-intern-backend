@@ -11,7 +11,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(RolesTableSeeder::class);
-        $this->call(UserSeeder::class);
+        // Un-Comment this seeder to start the project (Project Starter)
+
+        // $this->call(RolesTableSeeder::class);
+        // $this->call(UserSeeder::class);
+        // $this->call(PermissionsTableSeeder::class);
+        // $this->call(AssignPermissionsToRolesSeeder::class);
     }
 }
