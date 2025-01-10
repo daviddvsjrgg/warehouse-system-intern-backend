@@ -115,22 +115,27 @@ class MasterItemController extends Controller
      * Update the specified resource in storage.
      */
     public function update(Request $request, $id)
-    {
-        // Inline validation
-        $validator = Validator::make($request->all(), [
-            'nama_barang' => 'required|string|max:255',
-            'barcode_sn' => 'required|string|max:255|unique:master_items,barcode_sn,' . $id,
-            'sku' => 'required|string|max:255|unique:master_items,sku,' . $id,
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(new GeneralResource(false, 'Validation Error', $validator->errors(), 422));
+        {
+            // Allow only 'nama_barang' to be updated
+            $validator = Validator::make($request->all(), [
+                'nama_barang' => 'required|string|max:255',
+            ]);
+        
+            if ($validator->fails()) {
+                return response()->json(new GeneralResource(false, 'Validation Error', $validator->errors(), 422));
+            }
+        
+            // Find the item by ID
+            $item = MasterItem::findOrFail($id);
+        
+            // Update only 'nama_barang'
+            $item->update([
+                'nama_barang' => $request->nama_barang
+            ]);
+        
+            return new GeneralResource(true, 'Data updated successfully!', $item, 200);
         }
-
-        $item = MasterItem::findOrFail($id);
-        $item->update($validator->validated());
-        return new GeneralResource(true, 'Data updated successfully!', $item, 200);
-    }
+    
 
     /**
      * Remove the specified resource from storage.
