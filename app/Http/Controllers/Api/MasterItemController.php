@@ -64,10 +64,26 @@ class MasterItemController extends Controller
              'items.*.sku' => 'required|unique:master_items,sku|string|max:255',
          ]);
      
-         // If validation fails, return detailed error messages
-         if ($validator->fails()) {
-             return response()->json(new GeneralResource(false, 'Validation Error', $validator->errors(), 422));
-         }
+        // If validation fails, return detailed error messages
+        if ($validator->fails()) {
+            $errors = $validator->errors();
+
+            // Collect all conflicting SKUs
+            $conflictingSkus = [];
+            foreach ($request->input('items') as $index => $item) {
+                if ($errors->has("items.$index.sku")) {
+                    $conflictingSkus[] = $item['sku'];
+                }
+            }
+
+            // Format the error message
+            if (!empty($conflictingSkus)) {
+                $conflictingSkuMessage = "Validation Error: The following SKUs have already been taken: " . implode(', ', $conflictingSkus) . ".";
+                return response()->json(new GeneralResource(false, $conflictingSkuMessage, $errors, 422));
+            }
+
+            return response()->json(new GeneralResource(false, 'Validation Error', $errors, 422));
+        }
      
          // Extract validated data
          $itemsData = $validator->validated()['items'];
