@@ -61,7 +61,7 @@ class MasterItemController extends Controller
              'items' => 'required|array',
              'items.*.nama_barang' => 'required|string|max:255',
              'items.*.barcode_sn' => 'required|string|max:255',
-             'items.*.sku' => 'required|unique|string|max:255',
+             'items.*.sku' => 'required|unique:master_items,sku|string|max:255',
          ]);
      
          // If validation fails, return detailed error messages
