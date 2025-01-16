@@ -71,6 +71,8 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
         Route::post('/scanned-item', [ScannedItemController::class, 'store'])->name('scanned-item.store');
         Route::put('/scanned-item/{id}', [ScannedItemController::class, 'update'])->name('scanned-item.update');
         Route::delete('/scanned-item/{id}', [ScannedItemController::class, 'destroy'])->name('scanned-item.destroy');
+
+        Route::get('/invoice', [ScannedItemController::class, 'indexByInvoice'])->name('scanned-item.index.by.invoice');
     });
 
     // User Management routes (accessible only by 'user-management' role)

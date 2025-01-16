@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\GeneralResource;
 use App\Models\ScannedItem;
+use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon; // Import Carbon for date handling
@@ -166,4 +167,72 @@ class ScannedItemController extends Controller
         $scannedItem->delete();
         return new GeneralResource(true, 'Scanned item deleted successfully!', null, 204);
     }
+    public function indexByInvoice(Request $request)
+    {
+        // Validate the search term if provided
+        $invoiceNumber = $request->input('invoice_number'); // Get the invoice_number from request
+    
+        // Get all scanned items along with related master_item and user
+        $groupedByInvoiceQuery = ScannedItem::with(['master_item', 'user']); // Eager load the relationships
+    
+        // Apply exact search for invoice_number if provided
+        if ($invoiceNumber) {
+            $groupedByInvoiceQuery->where('invoice_number', '=', $invoiceNumber);
+        }
+    
+        // Get the data
+        $groupedByInvoice = $groupedByInvoiceQuery
+            ->get()
+            ->groupBy('invoice_number') // First group by invoice_number
+            ->map(function ($items, $invoiceNumber) {
+                // Get the user email for the invoice (assuming we take the first user's email)
+                $userEmail = $items->first()->user->email ?? 'Unknown User';
+    
+                // Get the created_at and updated_at timestamps (from the first item in the group)
+                $createdAt = $items->first()->created_at;
+                $updatedAt = $items->first()->updated_at;
+    
+                // For each invoice, group by sku and item name
+                $groupedItemsBySkuAndName = $items->groupBy(function ($item) {
+                    return $item->sku . '|' . $item->master_item->nama_barang;
+                })->map(function ($skuAndNameItems) {
+                    // Calculate total quantity by counting the number of serial numbers
+                    $totalQty = $skuAndNameItems->count();
+    
+                    return [
+                        'sku' => $skuAndNameItems->first()->sku,
+                        'item_name' => $skuAndNameItems->first()->master_item->nama_barang ?? 'Unknown Item',
+                        'total_qty' => $totalQty, // Add the total quantity here
+                        'serial_numbers' => $skuAndNameItems->map(function ($item) {
+                            return [
+                                'barcode_sn' => $item->barcode_sn
+                            ];
+                        })
+                    ];
+                });
+    
+                return [
+                    'invoice_number' => $invoiceNumber,
+                    'total_qty' => $items->sum('qty'), // Calculate total quantity per invoice
+                    'items' => $groupedItemsBySkuAndName->values(), // Reset keys and return the grouped items
+                    'user_email' => $userEmail, // Include the user email
+                    'created_at' => $createdAt, // Include the created_at timestamp
+                    'updated_at' => $updatedAt  // Include the updated_at timestamp
+                ];
+            })
+            ->values(); // Reset the keys to numeric indices
+    
+        // Paginate the grouped data
+        $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $groupedByInvoice->forPage($request->input('page', 1), 5), // Paginate with 5 items per page
+            $groupedByInvoice->count(),
+            5,
+            $request->input('page', 1),
+            ['path' => url()->current()]
+        );
+    
+        return new GeneralResource(true, 'Grouped scanned items by invoice and SKU retrieved successfully!', $paginated, 200);
+    }
+    
+
 }
