@@ -19,11 +19,28 @@ class ScannedItemController extends Controller
         // Fetch the 'per_page' parameter, or default to 5 if not provided
         $perPage = $request->input('per_page', 5);
 
-        // Fetch the 'exact' search term (if provided)
+        // Check if the 'check-duplicate' parameter is set to true
+        $checkDuplicate = filter_var($request->input('check-duplicate', false), FILTER_VALIDATE_BOOLEAN);
+
+        // If check-duplicate is true, return duplicate barcode_sn records
+        if ($checkDuplicate) {
+            $duplicates = ScannedItem::select('barcode_sn')
+                ->groupBy('barcode_sn')
+                ->havingRaw('COUNT(barcode_sn) > 1')
+                ->pluck('barcode_sn');
+
+            // Fetch the full records of the duplicates
+            $duplicateRecords = ScannedItem::whereIn('barcode_sn', $duplicates)
+                ->with(['master_item', 'user'])
+                ->paginate($perPage);
+
+            return new GeneralResource(true, 'Duplicate barcode_sn retrieved successfully!', $duplicateRecords, 200);
+        }
+
+        // Existing logic for general filtering
         $exactSearch = $request->input('exact');
         $invoiceNumbers = $request->input('invoice_numbers', []); // Array of invoice numbers
         $barcodeSNs = $request->input('barcode_sns', []); // Array of barcode SNs
-        
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
@@ -34,8 +51,8 @@ class ScannedItemController extends Controller
         if ($exactSearch) {
             $query->where(function ($q) use ($exactSearch) {
                 $q->where('sku', $exactSearch)
-                ->orWhere('barcode_sn', $exactSearch)
-                ->orWhere('invoice_number', $exactSearch);
+                    ->orWhere('barcode_sn', $exactSearch)
+                    ->orWhere('invoice_number', $exactSearch);
             });
         }
 
@@ -67,6 +84,7 @@ class ScannedItemController extends Controller
         // Return the response using the GeneralResource format
         return new GeneralResource(true, 'Data retrieved successfully!', $scannedItems, 200);
     }
+
 
     
     /**
