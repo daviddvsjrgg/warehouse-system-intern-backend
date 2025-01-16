@@ -99,6 +99,7 @@ class UserManagementController extends Controller
             'name' => 'required|string|max:255',
             'roles' => 'required|array',
             'roles.*' => 'exists:roles,name', // Ensure roles exist in the roles table
+            'password' => 'nullable|string|min:8|confirmed', // Optional password field with confirmation
         ]);
 
         // Check if validation fails
@@ -114,6 +115,13 @@ class UserManagementController extends Controller
             'name' => $request->name,
         ]);
 
+        // If password is provided, update it
+        if ($request->filled('password')) {
+            $user->update([
+                'password' => bcrypt($request->password),
+            ]);
+        }
+
         // Sync the roles with the provided ones
         $roles = Role::whereIn('name', $request->roles)->get();
         $user->roles()->sync($roles);
@@ -121,5 +129,6 @@ class UserManagementController extends Controller
         // Return response with updated user data
         return new GeneralResource(true, 'User updated successfully', $user->load('roles'), 200);
     }
+
 
 }
