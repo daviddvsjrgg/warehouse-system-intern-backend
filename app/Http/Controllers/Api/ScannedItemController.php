@@ -19,54 +19,77 @@ class ScannedItemController extends Controller
     {
         // Fetch the 'per_page' parameter, or default to 5 if not provided
         $perPage = $request->input('per_page', 5);
-
+    
         // Check if the 'check-duplicate' parameter is set to true
         $checkDuplicate = filter_var($request->input('check-duplicate', false), FILTER_VALIDATE_BOOLEAN);
-
+    
         // If check-duplicate is true, return duplicate barcode_sn records
         if ($checkDuplicate) {
             $duplicates = ScannedItem::select('barcode_sn')
                 ->groupBy('barcode_sn')
                 ->havingRaw('COUNT(barcode_sn) > 1')
                 ->pluck('barcode_sn');
-
+    
             // Fetch the full records of the duplicates
             $duplicateRecords = ScannedItem::whereIn('barcode_sn', $duplicates)
                 ->with(['master_item', 'user'])
                 ->paginate($perPage);
-
+    
             return new GeneralResource(true, 'Duplicate barcode_sn retrieved successfully!', $duplicateRecords, 200);
         }
-
-        // Existing logic for general filtering
+    
+        // Fetch parameters
         $exactSearch = $request->input('exact');
-        $invoiceNumbers = $request->input('invoice_numbers', []); // Array of invoice numbers
-        $barcodeSNs = $request->input('barcode_sns', []); // Array of barcode SNs
+        $isExactSearch = filter_var($request->input('is_exact_search', false), FILTER_VALIDATE_BOOLEAN); // Whether the search is exact
+        $selectedFilter = $request->input('selected_filter', ''); // Fetch selected_filter parameter
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
-
+    
         // Build the query
         $query = ScannedItem::with(['master_item', 'user']);
-
-        // If the 'exact' search term is provided, filter by the exact match on 'sku' or 'invoice_number'
+    
+        // Apply the exact/partial search based on the isExactSearch flag
         if ($exactSearch) {
-            $query->where(function ($q) use ($exactSearch) {
-                $q->where('sku', $exactSearch)
-                    ->orWhere('barcode_sn', $exactSearch)
-                    ->orWhere('invoice_number', $exactSearch);
-            });
+            if ($isExactSearch) {
+                // Exact match (using '=' operator)
+                $query->where(function ($q) use ($exactSearch) {
+                    $q->where('sku', $exactSearch)
+                        ->orWhere('barcode_sn', $exactSearch)
+                        ->orWhere('invoice_number', $exactSearch);
+                });
+            } else {
+                // Partial match (using 'LIKE' operator)
+                $query->where(function ($q) use ($exactSearch) {
+                    $q->where('sku', 'like', "%$exactSearch%")
+                        ->orWhere('barcode_sn', 'like', "%$exactSearch%")
+                        ->orWhere('invoice_number', 'like', "%$exactSearch%");
+                });
+            }
         }
-
-        // If invoice numbers are provided, filter by those numbers
-        if (!empty($invoiceNumbers)) {
-            $query->whereIn('invoice_number', $invoiceNumbers);
+    
+        // Handle selectedFilter parameter for specific field filtering
+        if ($selectedFilter) {
+            if ($selectedFilter === 'sku') {
+                if ($isExactSearch) {
+                    $query->where('sku', $exactSearch); // Exact match for SKU
+                } else {
+                    $query->where('sku', 'like', "%$exactSearch%"); // Partial match for SKU
+                }
+            } elseif ($selectedFilter === 'invoice') {
+                if ($isExactSearch) {
+                    $query->where('invoice_number', $exactSearch); // Exact match for invoice number
+                } else {
+                    $query->where('invoice_number', 'like', "%$exactSearch%"); // Partial match for invoice number
+                }
+            } elseif ($selectedFilter === 'sn') {
+                if ($isExactSearch) {
+                    $query->where('barcode_sn', $exactSearch); // Exact match for barcode_sn
+                } else {
+                    $query->where('barcode_sn', 'like', "%$exactSearch%"); // Partial match for barcode_sn
+                }
+            }
         }
-
-        // If barcode SNs are provided, filter by those SNs
-        if (!empty($barcodeSNs)) {
-            $query->orWhereIn('barcode_sn', $barcodeSNs);
-        }
-
+    
         // Date filtering logic
         if ($startDate && $endDate && $startDate === $endDate) {
             $query->whereDate('created_at', $startDate);
@@ -78,13 +101,15 @@ class ScannedItemController extends Controller
                 $query->where('created_at', '<=', Carbon::parse($endDate)->endOfDay());
             }
         }
-
+    
         // Paginate the results with the requested 'per_page' value
         $scannedItems = $query->latest()->paginate($perPage);
-
+    
         // Return the response using the GeneralResource format
         return new GeneralResource(true, 'Data retrieved successfully!', $scannedItems, 200);
     }
+    
+
 
 
     
