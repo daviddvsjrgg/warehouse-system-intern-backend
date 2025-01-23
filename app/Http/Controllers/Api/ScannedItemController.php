@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\GeneralResource;
 use App\Models\ScannedItem;
-use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon; // Import Carbon for date handling
@@ -109,10 +108,6 @@ class ScannedItemController extends Controller
         return new GeneralResource(true, 'Data retrieved successfully!', $scannedItems, 200);
     }
     
-
-
-
-    
     /**
      * Store a newly created scanned item.
      */
@@ -211,7 +206,8 @@ class ScannedItemController extends Controller
             ->groupBy('invoice_number') // First group by invoice_number
             ->map(function ($items, $invoiceNumber) {
                 // Get the user email for the invoice (assuming we take the first user's email)
-                $userEmail = $items->first()->user->email ?? 'Unknown User';
+                $userEmail = $items->first()->user->email ?? 'Unknown Email';
+                $userName = $items->first()->user->name ?? 'Unknown User';
     
                 // Get the created_at and updated_at timestamps (from the first item in the group)
                 $createdAt = $items->first()->created_at;
@@ -230,7 +226,9 @@ class ScannedItemController extends Controller
                         'total_qty' => $totalQty, // Add the total quantity here
                         'serial_numbers' => $skuAndNameItems->map(function ($item) {
                             return [
-                                'barcode_sn' => $item->barcode_sn
+                                'barcode_sn' => $item->barcode_sn,
+                                'created_at' => $item->created_at,
+                                'updated_at' => $item->updated_at
                             ];
                         })
                     ];
@@ -240,6 +238,7 @@ class ScannedItemController extends Controller
                     'invoice_number' => $invoiceNumber,
                     'total_qty' => $items->sum('qty'), // Calculate total quantity per invoice
                     'items' => $groupedItemsBySkuAndName->values(), // Reset keys and return the grouped items
+                    'user_name' => $userName,
                     'user_email' => $userEmail, // Include the user email
                     'created_at' => $createdAt, // Include the created_at timestamp
                     'updated_at' => $updatedAt  // Include the updated_at timestamp
@@ -259,5 +258,4 @@ class ScannedItemController extends Controller
         return new GeneralResource(true, 'Grouped scanned items by invoice and SKU retrieved successfully!', $paginated, 200);
     }
     
-
 }
