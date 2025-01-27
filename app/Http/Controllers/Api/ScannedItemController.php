@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\GeneralResource;
 use App\Models\ScannedItem;
+use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon; // Import Carbon for date handling
@@ -159,7 +160,7 @@ class ScannedItemController extends Controller
     /**
      * Update the specified scanned item.
      */
-    public function update(Request $request, $id)
+    public function updateBarcodeSNOnly(Request $request, $id)
     {
         // Validate the request for barcode_sn and qty
         $request->validate([
@@ -175,8 +176,69 @@ class ScannedItemController extends Controller
         $scannedItem->qty = $request->qty;
         $scannedItem->save();
     
-        return new GeneralResource(true, 'Scanned item updated successfully!', $scannedItem, 200);
+        return new GeneralResource(true, 'SN item updated successfully!', $scannedItem, 200);
     }    
+
+    public function updateInvoiceOnly(Request $request, $id)
+    {
+        // Validate the request for barcode_sn and qty
+        $request->validate([
+            'invoice_number' => 'required|string',
+        ]);
+    
+        // Find the scanned item by ID
+        $scannedItem = ScannedItem::findOrFail($id);
+    
+        // Update the barcode_sn and qty fields
+        $scannedItem->invoice_number = $request->invoice_number;
+        $scannedItem->save();
+    
+        return new GeneralResource(true, 'Invoice item updated successfully!', $scannedItem, 200);
+    } 
+
+    public function updateAllInvoice(Request $request)
+    {
+        // Retrieve the input values from the request
+        $editInvoice = $request->input('editInvoice');
+        $editTempInvoice = $request->input('editTempInvoice');
+
+        // Validate the input data
+        if (!$editInvoice || !$editTempInvoice) {
+            return response()->json(['message' => 'Both original and edited invoice numbers are required'], 400);
+        }
+
+        // Begin transaction to ensure atomicity
+        DB::beginTransaction();
+
+        try {
+            // Find all scanned items where invoice_number is equal to editInvoice
+            $scannedItems = ScannedItem::where('invoice_number', $editInvoice)->get();
+
+            // Check if there are any items to update
+            if ($scannedItems->isEmpty()) {
+                return response()->json(['message' => 'No scanned items found with the original invoice number'], 404);
+            }
+
+            // Update the invoice_number for all matching records
+            foreach ($scannedItems as $scannedItem) {
+                $scannedItem->invoice_number = $editTempInvoice;
+                $scannedItem->save();
+            }
+
+            // Commit the transaction
+            DB::commit();
+
+            // Return a success message with all updated items
+            return new GeneralResource(true, 'Related Invoice items updated successfully!', $scannedItems, 200);
+
+        } catch (\Exception $e) {
+            // Rollback transaction in case of error
+            DB::rollBack();
+
+            // Return an error response
+            return response()->json(['message' => 'An error occurred while updating invoice numbers. Please try again.'], 500);
+        }
+    }
 
     /**
      * Remove the specified scanned item.

@@ -68,5 +68,6 @@ class Kernel extends HttpKernel
         'check.token.expiration' => \App\Http\Middleware\CheckTokenExpiration::class,
         'check.role' => \App\Http\Middleware\CheckRole::class,
         'permission' => \App\Http\Middleware\CheckPermission::class,
+        'api.key' => \App\Http\Middleware\ApiKeyMiddleware::class,
     ];
 }

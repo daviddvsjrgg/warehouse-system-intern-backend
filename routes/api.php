@@ -38,19 +38,6 @@ Route::apiResource('examples', ExampleController::class);
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 
-// -> Role
-Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
-Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
-Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
-Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
-
-// -> Permission
-Route::get('permissions', [PermissionController::class, 'index']);
-Route::post('permissions', [PermissionController::class, 'store']);
-Route::get('permissions/{id}', [PermissionController::class, 'show']);
-Route::put('permissions/{id}', [PermissionController::class, 'update']);
-Route::delete('permissions/{id}', [PermissionController::class, 'destroy']);
-
 // Protected routes
 Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']); // Logout
@@ -69,7 +56,9 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
         Route::get('/scanned-item', [ScannedItemController::class, 'index'])->name('scanned-item.index');
         Route::get('/scanned-item/{id}', [ScannedItemController::class, 'show'])->name('scanned-item.show');
         Route::post('/scanned-item', [ScannedItemController::class, 'store'])->name('scanned-item.store');
-        Route::put('/scanned-item/{id}', [ScannedItemController::class, 'update'])->name('scanned-item.update');
+        Route::put('/scanned-item/update-sn/{id}', [ScannedItemController::class, 'updateBarcodeSNOnly'])->name('scanned-item.update.sn');
+        Route::put('/scanned-item/update-invoice/{id}', [ScannedItemController::class, 'updateInvoiceOnly'])->name('scanned-item.update.invoice');
+        Route::put('/scanned-item/update-all-invoice', [ScannedItemController::class, 'updateAllInvoice'])->name('scanned-item.update.all.invoice');
         Route::delete('/scanned-item/{id}', [ScannedItemController::class, 'destroy'])->name('scanned-item.destroy');
 
         Route::get('/invoice', [ScannedItemController::class, 'indexByInvoice'])->name('scanned-item.index.by.invoice');
@@ -87,5 +76,36 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
         Route::get('roles/{roleId}/permissions', [PermissionController::class, 'showPermissions']);
         // Remove permission from a role
         Route::delete('roles/{roleId}/permissions', [PermissionController::class, 'removePermission']);
+
+        // -> Role
+        Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
+        Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
+        Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+        Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
+
+        // -> Permission
+        Route::get('/permissions', [PermissionController::class, 'index']);
+        Route::post('/permissions', [PermissionController::class, 'store']);
+        Route::get('/permissions/{id}', [PermissionController::class, 'show']);
+        Route::put('/permissions/{id}', [PermissionController::class, 'update']);
+        Route::delete('/permissions/{id}', [PermissionController::class, 'destroy']);
     });
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| API Routes (API KEY USER ONLY)
+|--------------------------------------------------------------------------
+|
+*/
+
+// Version 2 API key authenticated routes
+Route::prefix('v2')->middleware(['api.key'])->group(function () {
+    // Master Items
+    Route::get('/master-item', [MasterItemController::class, 'index'])->name('master-item.index');
+
+    // Scanned Items
+    Route::get('/scanned-item', [ScannedItemController::class, 'index'])->name('scanned-item.index');
+    Route::get('/invoice', [ScannedItemController::class, 'indexByInvoice'])->name('scanned-item.index.by.invoice');
 });
