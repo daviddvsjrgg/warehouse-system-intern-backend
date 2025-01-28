@@ -41,6 +41,10 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 // Protected routes
 Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']); // Logout
+    Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
+    Route::get('/permissions', [PermissionController::class, 'index']);
+    Route::get('/permissions/{id}', [PermissionController::class, 'show']);
+
 
     // Master Item routes (accessible only by 'master-item' role)
     Route::middleware(['check.role:master-item'])->group(function () {
@@ -71,22 +75,19 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
         Route::put('/users/{user}', [UserManagementController::class, 'updateUser'])->name('users.update');
 
         // Assign permissions to a role
-        Route::post('roles/{roleId}/permissions', [PermissionController::class, 'assignPermissions']);
+        Route::post('/roles/{roleId}/permissions', [PermissionController::class, 'assignPermissions']);
         // Show permissions for a role
-        Route::get('roles/{roleId}/permissions', [PermissionController::class, 'showPermissions']);
+        Route::get('/roles/{roleId}/permissions', [PermissionController::class, 'showPermissions']);
         // Remove permission from a role
-        Route::delete('roles/{roleId}/permissions', [PermissionController::class, 'removePermission']);
+        Route::delete('/roles/{roleId}/permissions', [PermissionController::class, 'removePermission']);
 
         // -> Role
-        Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
         Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
         Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
         Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
 
         // -> Permission
-        Route::get('/permissions', [PermissionController::class, 'index']);
         Route::post('/permissions', [PermissionController::class, 'store']);
-        Route::get('/permissions/{id}', [PermissionController::class, 'show']);
         Route::put('/permissions/{id}', [PermissionController::class, 'update']);
         Route::delete('/permissions/{id}', [PermissionController::class, 'destroy']);
     });
