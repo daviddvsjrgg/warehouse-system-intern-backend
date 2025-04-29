@@ -69,5 +69,6 @@ class Kernel extends HttpKernel
         'check.role' => \App\Http\Middleware\CheckRole::class,
         'permission' => \App\Http\Middleware\CheckPermission::class,
         'api.key' => \App\Http\Middleware\ApiKeyMiddleware::class,
+        'extend.token' => \App\Http\Middleware\ExtendTokenExpiration::class,
     ];
 }

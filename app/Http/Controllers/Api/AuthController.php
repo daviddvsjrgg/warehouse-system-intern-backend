@@ -39,40 +39,36 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        // Validate the incoming request data
         $validator = Validator::make($request->all(), [
             'email' => 'required|string|email',
             'password' => 'required|string',
         ]);
-
-        // Return validation errors if validation fails
+    
         if ($validator->fails()) {
             return (new GeneralResource(false, 'Validation Error', $validator->errors(), 422))->response();
         }
-
-        // Attempt to find the user
+    
         $user = User::where('email', $request->email)->first();
-
-        // Check if the user exists and the password is correct
+    
         if (!$user || !Hash::check($request->password, $user->password)) {
             return (new GeneralResource(false, 'Unauthorized', null, 401))->response();
         }
-
-        // Generate a new token for the user
-        $token = $user->createToken('token_name')->plainTextToken;
-
-        // Set token expiration time (e.g., 2 hours from now) in GMT+7
-        $expiresAt = now()->timezone('GMT+7')->addHours(24);
-
-        // Return success response with token and user ID
+    
+        // Generate token that expires in 1 hour
+        $tokenResult = $user->createToken('token_name');
+        $tokenResult->accessToken->expires_at = now()->addHours(1);
+        $tokenResult->accessToken->save();
+    
+        $token = $tokenResult->plainTextToken;
+        $expiresAt = now()->addHours(1)->timezone('Asia/Jakarta');
+    
         return (new GeneralResource(true, 'Login successful.', [
             'token' => $token,
-            'user_id' => $user->id,  // Include user ID in response
-            'expires_at' => $expiresAt // Set token expiration time
+            'user_id' => $user->id,
+            'expires_at' => $expiresAt,
+            'expires_in' => 3600, // 1 jam dalam detik
         ], 200))->response();
     }
-
-
 
     public function logout(Request $request)
     {

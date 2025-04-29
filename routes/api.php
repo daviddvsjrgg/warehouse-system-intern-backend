@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\UserManagementController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\ExampleController;
@@ -24,12 +25,19 @@ use App\Http\Controllers\Api\RoleController;
 // -> 'php artisan route:list' to check all route
 
 // Get User by their Token
-Route::middleware(['auth:sanctum', 'check.token.expiration'])->get('/user', function (Request $request) {
-    // Eager load roles and permissions for the authenticated user
+Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
     $user = $request->user()->load('roles');
 
-    return response()->json($user);
+    $token = $request->user()->currentAccessToken();
+    $expiresAt = $token ? \Carbon\Carbon::parse($token->expires_at)->timezone('Asia/Jakarta') : null;
+
+    return response()->json([
+        'user' => $user,
+        'expires_at' => $expiresAt,
+        'expires_in' => $expiresAt && $expiresAt->isFuture() ? $expiresAt->diffInSeconds(now()) : 0,
+    ]);
 });
+
 
 // Examples -> Just for example for API crud & response
 Route::apiResource('examples', ExampleController::class);
@@ -39,7 +47,7 @@ Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 
 // Protected routes
-Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function () {
+Route::middleware(['auth:sanctum', 'extend.token'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']); // Logout
     Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
     Route::get('/permissions', [PermissionController::class, 'index']);
