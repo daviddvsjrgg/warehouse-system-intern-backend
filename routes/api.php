@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Api\UserManagementController;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\ExampleController;
@@ -26,18 +25,11 @@ use App\Http\Controllers\Api\RoleController;
 
 // Get User by their Token
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
+    // Eager load roles and permissions for the authenticated user
     $user = $request->user()->load('roles');
 
-    $token = $request->user()->currentAccessToken();
-    $expiresAt = $token ? \Carbon\Carbon::parse($token->expires_at)->timezone('Asia/Jakarta') : null;
-
-    return response()->json([
-        'user' => $user,
-        'expires_at' => $expiresAt,
-        'expires_in' => $expiresAt && $expiresAt->isFuture() ? $expiresAt->diffInSeconds(now()) : 0,
-    ]);
+    return response()->json($user);
 });
-
 
 // Examples -> Just for example for API crud & response
 Route::apiResource('examples', ExampleController::class);
