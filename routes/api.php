@@ -57,6 +57,7 @@ Route::middleware(['auth:sanctum', 'extend.token'])->group(function () {
 
     // Scanned Item routes (accessible only by 'office' role)
     Route::middleware(['check.role:office'])->group(function () {
+        Route::get('/scanned-item/check-duplicate', [ScannedItemController::class, 'checkSNDuplicate'])->name('scanned-item.check.duplicate.sn');
         Route::get('/scanned-item', [ScannedItemController::class, 'index'])->name('scanned-item.index');
         Route::get('/scanned-item/{id}', [ScannedItemController::class, 'show'])->name('scanned-item.show');
         Route::post('/scanned-item', [ScannedItemController::class, 'store'])->name('scanned-item.store');

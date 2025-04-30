@@ -319,5 +319,44 @@ class ScannedItemController extends Controller
     
         return new GeneralResource(true, 'Grouped scanned items by invoice and SKU retrieved successfully!', $paginated, 200);
     }
-    
+
+    public function checkSNDuplicate(Request $request)
+    {
+        // Get the invoices and barcodes from the request payload
+        $invoices = $request->input('invoices', []);
+        $barcodes = $request->input('barcodes', []);
+
+        // Remove duplicates from the invoices array (if any)
+        $invoices = array_unique($invoices);
+
+        // Initialize an array to hold the duplicate information
+        $duplicates = [
+            'invoices' => [],
+            'barcodes' => [],
+        ];
+
+        // Check for duplicates in the database for invoices
+        foreach ($invoices as $invoice) {
+            $exists = ScannedItem::where('invoice_number', $invoice)->exists(); // Check if the invoice exists in the database
+            if ($exists) {
+                $duplicates['invoices'][] = $invoice; // Add to duplicates if exists
+            }
+        }
+
+        // Check for duplicates in the database for barcodes
+        foreach ($barcodes as $barcode) {
+            $exists = ScannedItem::where('barcode_sn', $barcode)->exists(); // Check if the barcode exists in the database
+            if ($exists) {
+                $duplicates['barcodes'][] = $barcode; // Add to duplicates if exists
+            }
+        }
+
+        // If there are duplicates, return them in the response
+        if (!empty($duplicates['invoices']) || !empty($duplicates['barcodes'])) {
+            return new GeneralResource(true, 'Terdeteksi Duplikat!', $duplicates, 200);
+        }
+
+        // If no duplicates, return a success response
+        return new GeneralResource(true, 'Tidak Ada Duplikat!', null, 204);
+    }
 }
