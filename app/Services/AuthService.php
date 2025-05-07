@@ -33,7 +33,7 @@ class AuthService
         if (!$user || !Hash::check($request['password'], $user->password)) {
             return [
                 'error' => 'error',
-                'message' => 'Unauthorized',
+                'message' => 'Email atau password salah!',
                 'status_code' => 401,
             ];
         }
