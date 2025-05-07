@@ -31,6 +31,8 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
     return response()->json($user);
 });
 
+Route::get('/scanned-item/export', [ScannedItemController::class, 'export'])->name('scanned-item.export');
+
 // Examples -> Just for example for API crud & response
 Route::apiResource('examples', ExampleController::class);
 
