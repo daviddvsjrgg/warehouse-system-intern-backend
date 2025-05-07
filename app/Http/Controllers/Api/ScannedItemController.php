@@ -3,110 +3,35 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\ApiResponse;
 use App\Http\Resources\GeneralResource;
 use App\Models\ScannedItem;
-use DB;
+use App\Services\ScannedItemService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Carbon\Carbon; // Import Carbon for date handling
 
 class ScannedItemController extends Controller
 {
+    use ApiResponse;
+
+    protected $scannedItemService;
+
+    public function __construct(ScannedItemService $scannedItemService)
+    {
+        $this->scannedItemService = $scannedItemService;
+    }
+
     /**
      * Display a listing of the scanned items with their master items.
      */
     public function index(Request $request)
     {
-        // Fetch the 'per_page' parameter, or default to 5 if not provided
-        $perPage = $request->input('per_page', 5);
-    
-        // Check if the 'check-duplicate' parameter is set to true
-        $checkDuplicate = filter_var($request->input('check-duplicate', false), FILTER_VALIDATE_BOOLEAN);
-    
-        // If check-duplicate is true, return duplicate barcode_sn records
-        if ($checkDuplicate) {
-            $duplicates = ScannedItem::select('barcode_sn')
-                ->groupBy('barcode_sn')
-                ->havingRaw('COUNT(barcode_sn) > 1')
-                ->pluck('barcode_sn');
-    
-            // Fetch the full records of the duplicates
-            $duplicateRecords = ScannedItem::whereIn('barcode_sn', $duplicates)
-                ->with(['master_item', 'user'])
-                ->paginate($perPage);
-    
-            return new GeneralResource(true, 'Duplicate barcode_sn retrieved successfully!', $duplicateRecords, 200);
+        $response = $this->scannedItemService->getScannedItems($request->all());
+
+        if ($response['success']) {
+            return $this->sendSuccessResponse(true, $response['message'], $response['data'], $response['status_code']);
         }
-    
-        // Fetch parameters
-        $exactSearch = $request->input('exact');
-        $isExactSearch = filter_var($request->input('is_exact_search', false), FILTER_VALIDATE_BOOLEAN); // Whether the search is exact
-        $selectedFilter = $request->input('selected_filter', ''); // Fetch selected_filter parameter
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
-    
-        // Build the query
-        $query = ScannedItem::with(['master_item', 'user']);
-    
-        // Apply the exact/partial search based on the isExactSearch flag
-        if ($exactSearch) {
-            if ($isExactSearch) {
-                // Exact match (using '=' operator)
-                $query->where(function ($q) use ($exactSearch) {
-                    $q->where('sku', $exactSearch)
-                        ->orWhere('barcode_sn', $exactSearch)
-                        ->orWhere('invoice_number', $exactSearch);
-                });
-            } else {
-                // Partial match (using 'LIKE' operator)
-                $query->where(function ($q) use ($exactSearch) {
-                    $q->where('sku', 'like', "%$exactSearch%")
-                        ->orWhere('barcode_sn', 'like', "%$exactSearch%")
-                        ->orWhere('invoice_number', 'like', "%$exactSearch%");
-                });
-            }
-        }
-    
-        // Handle selectedFilter parameter for specific field filtering
-        if ($selectedFilter) {
-            if ($selectedFilter === 'sku') {
-                if ($isExactSearch) {
-                    $query->where('sku', $exactSearch); // Exact match for SKU
-                } else {
-                    $query->where('sku', 'like', "%$exactSearch%"); // Partial match for SKU
-                }
-            } elseif ($selectedFilter === 'invoice') {
-                if ($isExactSearch) {
-                    $query->where('invoice_number', $exactSearch); // Exact match for invoice number
-                } else {
-                    $query->where('invoice_number', 'like', "%$exactSearch%"); // Partial match for invoice number
-                }
-            } elseif ($selectedFilter === 'sn') {
-                if ($isExactSearch) {
-                    $query->where('barcode_sn', $exactSearch); // Exact match for barcode_sn
-                } else {
-                    $query->where('barcode_sn', 'like', "%$exactSearch%"); // Partial match for barcode_sn
-                }
-            }
-        }
-    
-        // Date filtering logic
-        if ($startDate && $endDate && $startDate === $endDate) {
-            $query->whereDate('created_at', $startDate);
-        } else {
-            if ($startDate) {
-                $query->where('created_at', '>=', $startDate);
-            }
-            if ($endDate) {
-                $query->where('created_at', '<=', Carbon::parse($endDate)->endOfDay());
-            }
-        }
-    
-        // Paginate the results with the requested 'per_page' value
-        $scannedItems = $query->latest()->paginate($perPage);
-    
-        // Return the response using the GeneralResource format
-        return new GeneralResource(true, 'Data retrieved successfully!', $scannedItems, 200);
+
+        return $this->sendErrorResponse(false, $response['message'], null, $response['status_code']);
     }
     
     /**
@@ -114,39 +39,14 @@ class ScannedItemController extends Controller
      */
     public function store(Request $request)
     {
-        // Validate that 'items' is an array and validate each item's fields
-        $validator = Validator::make($request->all(), [
-            'items' => 'required|array', // Ensure 'items' is an array
-            'items.*.item_id' => 'required|exists:master_items,id', // Ensure each item has a valid item_id
-            'items.*.user_id' => 'required|exists:users,id', // Ensure each item has a valid user_id
-            'items.*.sku' => 'required|string|max:255', // SKU should be a string with max length 255
-            'items.*.invoice_number' => 'required|string|max:255', // Invoice number should be a string with max length 255
-            'items.*.qty' => 'required|integer|min:0', // Quantity must be an integer with a minimum value of 0
-            'items.*.barcode_sn' => 'required|string|max:255', // Barcode SN should be a string with max length 255
-        ]);
+        $response = $this->scannedItemService->storeScannedItems($request->all());
 
-        // Check if validation fails
-        if ($validator->fails()) {
-            return response()->json(new GeneralResource(false, 'Validation Error', $validator->errors(), 422));
+        if (isset($response['error'])) {
+            return $this->sendErrorResponse(false, $response['message'], null, $response['status_code']);
         }
 
-        // Get the validated data (array of items)
-        $itemsData = $validator->validated()['items'];
-
-        // Append created_at and updated_at timestamps for each item
-        $currentTimestamp = Carbon::now();
-        foreach ($itemsData as &$item) {
-            $item['created_at'] = $currentTimestamp;
-            $item['updated_at'] = $currentTimestamp;
-        }
-
-        // Insert items in batch using the ScannedItem model
-        ScannedItem::insert($itemsData);
-
-        // Return a success response
-        return new GeneralResource(true, 'Scanned items added successfully!', null, 201);
+        return $this->sendSuccessResponse(true, $response['message'], $response['data'], $response['status_code']);
     }
-
 
     /**
      * Display the specified scanned item with its master item.
@@ -162,84 +62,36 @@ class ScannedItemController extends Controller
      */
     public function updateBarcodeSNOnly(Request $request, $id)
     {
-        // Validate the request for barcode_sn and qty
-        $request->validate([
-            'barcode_sn' => 'required|string',
-            'qty' => 'required|integer',
-        ]);
-    
-        // Find the scanned item by ID
-        $scannedItem = ScannedItem::findOrFail($id);
-    
-        // Update the barcode_sn and qty fields
-        $scannedItem->barcode_sn = $request->barcode_sn;
-        $scannedItem->qty = $request->qty;
-        $scannedItem->save();
-    
-        return new GeneralResource(true, 'SN item updated successfully!', $scannedItem, 200);
-    }    
+        $response = $this->scannedItemService->updateBarcodeSNOnly($request->all(), $id);
+
+        if (isset($response['error'])) {
+            return $this->sendErrorResponse(false, $response['message'], null, $response['status_code']);
+        }
+
+        return $this->sendSuccessResponse(true, $response['message'], $response['data'], $response['status_code']);
+    }
 
     public function updateInvoiceOnly(Request $request, $id)
     {
-        // Validate the request for barcode_sn and qty
-        $request->validate([
-            'invoice_number' => 'required|string',
-        ]);
-    
-        // Find the scanned item by ID
-        $scannedItem = ScannedItem::findOrFail($id);
-    
-        // Update the barcode_sn and qty fields
-        $scannedItem->invoice_number = $request->invoice_number;
-        $scannedItem->save();
-    
-        return new GeneralResource(true, 'Invoice item updated successfully!', $scannedItem, 200);
-    } 
+        $response = $this->scannedItemService->updateInvoiceOnly($request->all(), $id);
+
+        if (isset($response['error'])) {
+            return $this->sendErrorResponse(false, $response['message'], null, $response['status_code']);
+        }
+
+        return $this->sendSuccessResponse(true, $response['message'], $response['data'], $response['status_code']);
+    }
 
     public function updateAllInvoice(Request $request)
     {
-        // Retrieve the input values from the request
-        $editInvoice = $request->input('editInvoice');
-        $editTempInvoice = $request->input('editTempInvoice');
+        $response = $this->scannedItemService->updateAllInvoice($request->all());
 
-        // Validate the input data
-        if (!$editInvoice || !$editTempInvoice) {
-            return response()->json(['message' => 'Both original and edited invoice numbers are required'], 400);
+        if (isset($response['error'])) {
+            return $this->sendErrorResponse(false, $response['message'], null, $response['status_code']);
         }
 
-        // Begin transaction to ensure atomicity
-        DB::beginTransaction();
-
-        try {
-            // Find all scanned items where invoice_number is equal to editInvoice
-            $scannedItems = ScannedItem::where('invoice_number', $editInvoice)->get();
-
-            // Check if there are any items to update
-            if ($scannedItems->isEmpty()) {
-                return response()->json(['message' => 'No scanned items found with the original invoice number'], 404);
-            }
-
-            // Update the invoice_number for all matching records
-            foreach ($scannedItems as $scannedItem) {
-                $scannedItem->invoice_number = $editTempInvoice;
-                $scannedItem->save();
-            }
-
-            // Commit the transaction
-            DB::commit();
-
-            // Return a success message with all updated items
-            return new GeneralResource(true, 'Related Invoice items updated successfully!', $scannedItems, 200);
-
-        } catch (\Exception $e) {
-            // Rollback transaction in case of error
-            DB::rollBack();
-
-            // Return an error response
-            return response()->json(['message' => 'An error occurred while updating invoice numbers. Please try again.'], 500);
-        }
+        return $this->sendSuccessResponse(true, $response['message'], $response['data'], $response['status_code']);
     }
-
     /**
      * Remove the specified scanned item.
      */
@@ -251,112 +103,39 @@ class ScannedItemController extends Controller
     }
     public function indexByInvoice(Request $request)
     {
-        // Validate the search term if provided
-        $invoiceNumber = $request->input('invoice_number'); // Get the invoice_number from request
-    
-        // Get all scanned items along with related master_item and user
-        $groupedByInvoiceQuery = ScannedItem::with(['master_item', 'user']); // Eager load the relationships
-    
-        // Apply exact search for invoice_number if provided
-        if ($invoiceNumber) {
-            $groupedByInvoiceQuery->where('invoice_number', '=', $invoiceNumber);
+        $response = $this->scannedItemService->indexByInvoice($request->all());
+
+        if (isset($response['error']) && $response['error'] === true) {
+            return $this->sendErrorResponse(false, $response['message'], null, $response['status_code']);
         }
-    
-        // Get the data
-        $groupedByInvoice = $groupedByInvoiceQuery
-            ->get()
-            ->groupBy('invoice_number') // First group by invoice_number
-            ->map(function ($items, $invoiceNumber) {
-                // Get the user email for the invoice (assuming we take the first user's email)
-                $userEmail = $items->first()->user->email ?? 'Unknown Email';
-                $userName = $items->first()->user->name ?? 'Unknown User';
-    
-                // Get the created_at and updated_at timestamps (from the first item in the group)
-                $createdAt = $items->first()->created_at;
-                $updatedAt = $items->first()->updated_at;
-    
-                // For each invoice, group by sku and item name
-                $groupedItemsBySkuAndName = $items->groupBy(function ($item) {
-                    return $item->sku . '|' . $item->master_item->nama_barang;
-                })->map(function ($skuAndNameItems) {
-                    // Calculate total quantity by counting the number of serial numbers
-                    $totalQty = $skuAndNameItems->count();
-    
-                    return [
-                        'sku' => $skuAndNameItems->first()->sku,
-                        'item_name' => $skuAndNameItems->first()->master_item->nama_barang ?? 'Unknown Item',
-                        'total_qty' => $totalQty, // Add the total quantity here
-                        'serial_numbers' => $skuAndNameItems->map(function ($item) {
-                            return [
-                                'barcode_sn' => $item->barcode_sn,
-                                'created_at' => $item->created_at,
-                                'updated_at' => $item->updated_at
-                            ];
-                        })
-                    ];
-                });
-    
-                return [
-                    'invoice_number' => $invoiceNumber,
-                    'total_qty' => $items->sum('qty'), // Calculate total quantity per invoice
-                    'items' => $groupedItemsBySkuAndName->values(), // Reset keys and return the grouped items
-                    'user_name' => $userName,
-                    'user_email' => $userEmail, // Include the user email
-                    'created_at' => $createdAt, // Include the created_at timestamp
-                    'updated_at' => $updatedAt  // Include the updated_at timestamp
-                ];
-            })
-            ->values(); // Reset the keys to numeric indices
-    
-        // Paginate the grouped data
-        $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
-            $groupedByInvoice->forPage($request->input('page', 1), 5), // Paginate with 5 items per page
-            $groupedByInvoice->count(),
-            5,
-            $request->input('page', 1),
-            ['path' => url()->current()]
-        );
-    
-        return new GeneralResource(true, 'Grouped scanned items by invoice and SKU retrieved successfully!', $paginated, 200);
+
+        return $this->sendSuccessResponse($response['success'], $response['message'], $response['data'], $response['status_code']);
     }
+
 
     public function checkSNDuplicate(Request $request)
     {
-        // Get the invoices and barcodes from the request payload
-        $invoices = $request->input('invoices', []);
-        $barcodes = $request->input('barcodes', []);
+        $response = $this->scannedItemService->checkSNDuplicate($request->all());
 
-        // Remove duplicates from the invoices array (if any)
-        $invoices = array_unique($invoices);
-
-        // Initialize an array to hold the duplicate information
-        $duplicates = [
-            'invoices' => [],
-            'barcodes' => [],
-        ];
-
-        // Check for duplicates in the database for invoices
-        foreach ($invoices as $invoice) {
-            $exists = ScannedItem::where('invoice_number', $invoice)->exists(); // Check if the invoice exists in the database
-            if ($exists) {
-                $duplicates['invoices'][] = $invoice; // Add to duplicates if exists
-            }
+        if (isset($response['error']) && $response['error'] === true) {
+            return $this->sendErrorResponse(false, $response['message'], null, $response['status_code']);
         }
 
-        // Check for duplicates in the database for barcodes
-        foreach ($barcodes as $barcode) {
-            $exists = ScannedItem::where('barcode_sn', $barcode)->exists(); // Check if the barcode exists in the database
-            if ($exists) {
-                $duplicates['barcodes'][] = $barcode; // Add to duplicates if exists
-            }
-        }
-
-        // If there are duplicates, return them in the response
-        if (!empty($duplicates['invoices']) || !empty($duplicates['barcodes'])) {
-            return new GeneralResource(true, 'Terdeteksi Duplikat!', $duplicates, 200);
-        }
-
-        // If no duplicates, return a success response
-        return new GeneralResource(true, 'Tidak Ada Duplikat!', null, 204);
+        return $this->sendSuccessResponse(
+            $response['success'], $response['message'], $response['data'], $response['status_code']);
     }
+
+    // public function export(Request $request)
+    // {
+    //     // Fetch parameters
+    //     $exactSearch = $request->input('exact');
+    //     $isExactSearch = filter_var($request->input('is_exact_search', false), FILTER_VALIDATE_BOOLEAN); // Whether the search is exact
+    //     $selectedFilter = $request->input('selected_filter', ''); // Fetch selected_filter parameter
+    //     $startDate = $request->input('start_date');
+    //     $endDate = $request->input('end_date');
+
+    //     // Return the response using the GeneralResource format
+    //     return Excel::download(new ScannedItemExport($exactSearch, $isExactSearch, $selectedFilter, $startDate, $endDate), 'scanned_items.xlsx');
+    // }
+
 }
