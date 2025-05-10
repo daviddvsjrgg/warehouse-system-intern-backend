@@ -13,14 +13,6 @@ class ScannedItemService
     public function getScannedItems(array $request)
     {
         $perPage = $request['per_page'] ?? 5;
-        if ($perPage > 500) {
-            return [
-                'success' => true,
-                'message' => 'per_page cannot more than 500',
-                'data' => null,
-                'status_code' => 400
-            ];
-        }
         
         $checkDuplicate = filter_var($request['check-duplicate'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
