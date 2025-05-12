@@ -3,120 +3,52 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\ApiResponse;
 use App\Http\Resources\GeneralResource;
 use App\Models\MasterItem;
+use App\Services\MasterItemService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Carbon\Carbon;
-use DB;
 
 class MasterItemController extends Controller
 {
+
+    use ApiResponse;
+
+    protected $itemService;
+
+    public function __construct(MasterItemService $itemService)
+    {
+        $this->itemService = $itemService;
+    }
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        // Extract query, exact flag, and items per page (with a default value of 5)
-        $query = $request->input('query');
-        $exact = $request->input('exact', false); // Exact flag, defaults to false
-        $perPage = $request->input('per_page', 5); // Defaults to 5 if not provided
+        $result = $this->itemService->getItems($request->all());
 
-        // If 'exact' is true and a query is provided, find the exact match by SKU
-        if ($exact && $query) {
-            $items = MasterItem::where('sku', $query)
-            ->orWhere('nama_barang', $query)
-            ->get();
-
-            // If no item is found, return a custom error response
-            if ($items->isEmpty()) {
-                return response()->json(new GeneralResource(false, 'Item not found', null, 404));
-            }
-
-            // Return the exact match without pagination
-            return new GeneralResource(true, 'Exact SKU match found!', $items, 200);
+        if (isset($result['error']) && $result['error']) {
+            return $this->sendErrorResponse(false, $result['message'], $result['data'], $result['status_code']);
         }
 
-        // If 'exact' is false or no query, search with pagination and partial matching
-        $items = MasterItem::when($query, function ($queryBuilder) use ($query) {
-            return $queryBuilder->where('nama_barang', 'like', "%{$query}%")
-                ->orWhere('barcode_sn', 'like', "%{$query}%")
-                ->orWhere('sku', 'like', "%{$query}%");
-        })
-        ->paginate($perPage); // Paginate with dynamic per-page value
-
-        // Return paginated results wrapped in a resource
-        return new GeneralResource(true, 'Data retrieved successfully!', $items, 200);
+        return $this->sendSuccessResponse(true, $result['message'], $result['data'], $result['status_code']);
     }
-
 
     /**
      * Store a newly created resource in storage.
      */
 
-     public function store(Request $request)
-     {
-         // Validate the request data
-         $validator = Validator::make($request->all(), [
-             'items' => 'required|array',
-             'items.*.nama_barang' => 'required|string|max:255',
-             'items.*.barcode_sn' => 'required|string|max:255',
-             'items.*.sku' => 'required|unique:master_items,sku|string|max:255',
-         ]);
-     
-        // If validation fails, return detailed error messages
-        if ($validator->fails()) {
-            $errors = $validator->errors();
+     // app/Http/Controllers/Api/MasterItemController.php
+    public function store(Request $request)
+    {
+        $result = $this->itemService->storeItems($request->all());
 
-            // Collect all conflicting SKUs
-            $conflictingSkus = [];
-            foreach ($request->input('items') as $index => $item) {
-                if ($errors->has("items.$index.sku")) {
-                    $conflictingSkus[] = $item['sku'];
-                }
-            }
-
-            // Format the error message
-            if (!empty($conflictingSkus)) {
-                $conflictingSkuMessage = "Validation Error: The following SKUs have already been taken: " . implode(', ', $conflictingSkus) . ".";
-                return response()->json(new GeneralResource(false, $conflictingSkuMessage, $errors, 422));
-            }
-
-            return response()->json(new GeneralResource(false, 'Validation Error', $errors, 422));
+        if (isset($result['error']) && $result['error']) {
+            return $this->sendErrorResponse(false, $result['message'], $result['data'], $result['status_code']);
         }
-     
-         // Extract validated data
-         $itemsData = $validator->validated()['items'];
-         $currentTimestamp = Carbon::now();
-     
-         // Add timestamps to each item
-         foreach ($itemsData as &$item) {
-             $item['created_at'] = $currentTimestamp;
-             $item['updated_at'] = $currentTimestamp;
-         }
-     
-         // Start a database transaction
-         DB::beginTransaction();
-     
-         try {
-             // Use chunking for large datasets
-             foreach (array_chunk($itemsData, 1000) as $chunk) {
-                 MasterItem::insert($chunk); // Batch insert each chunk
-             }
-     
-             // Commit the transaction if everything is successful
-             DB::commit();
-     
-             // Return success response
-             return new GeneralResource(true, 'Data added successfully!', null, 201);
-         } catch (\Exception $e) {
-             // Rollback transaction if an error occurs
-             DB::rollBack();
-     
-             // Return error response
-             return response()->json(new GeneralResource(false, 'Error adding data', $e->getMessage(), 500));
-         }
-     }
+
+        return $this->sendSuccessResponse(true, $result['message'], $result['data'], $result['status_code']);
+    }
 
     /**
      * Display the specified resource.
@@ -131,28 +63,16 @@ class MasterItemController extends Controller
      * Update the specified resource in storage.
      */
     public function update(Request $request, $id)
-        {
-            // Allow only 'nama_barang' to be updated
-            $validator = Validator::make($request->all(), [
-                'nama_barang' => 'required|string|max:255',
-            ]);
-        
-            if ($validator->fails()) {
-                return response()->json(new GeneralResource(false, 'Validation Error', $validator->errors(), 422));
-            }
-        
-            // Find the item by ID
-            $item = MasterItem::findOrFail($id);
-        
-            // Update only 'nama_barang'
-            $item->update([
-                'nama_barang' => $request->nama_barang
-            ]);
-        
-            return new GeneralResource(true, 'Data updated successfully!', $item, 200);
-        }
-    
+    {
+        $result = $this->itemService->updateItem($request->all(), $id);
 
+        if (isset($result['error']) && $result['error']) {
+            return $this->sendErrorResponse(false, $result['message'], $result['data'], $result['status_code']);
+        }
+
+        return $this->sendSuccessResponse(true, $result['message'], $result['data'], $result['status_code']);
+    }
+    
     /**
      * Remove the specified resource from storage.
      */
